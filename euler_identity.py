@@ -1,5 +1,11 @@
 from manim import *
 
+# Configuración para TikTok (Vertical 1080x1920)
+config.pixel_height = 1920
+config.pixel_width = 1080
+config.frame_height = 16.0
+config.frame_width = 9.0
+
 class EulerIdentityProof(Scene):
     def construct(self):
         # --- COLORES Y ESTILOS ---
@@ -10,24 +16,41 @@ class EulerIdentityProof(Scene):
         COLOR_COS = PURPLE
         COLOR_TITLE = TEAL
         
-        # --- 1. INTRODUCCIÓN Y DEFINICIÓN DE e^x ---
-        title = Text("La Fórmula de Euler", font_size=60, color=COLOR_TITLE).to_edge(UP)
-        
-        # Imagen de Euler
+        # --- 1. INTRODUCCIÓN (PORTADA) ---
+        # Lado Izquierdo (Ahora Superior en TikTok): Imagen
         try:
             euler_img = ImageMobject("euler.jpg")
-            euler_img.scale(0.6).shift(DOWN * 0.5)
+            euler_img.scale(1.2).to_edge(UP, buff=1)
         except:
             # Placeholder si no existe la imagen
-            euler_img = Square(side_length=3, color=GRAY, fill_opacity=0.5)
-            euler_img.add(Text("Foto de\nLeonhard Euler", font_size=20))
-            euler_img.shift(DOWN * 0.5)
+            euler_img = Square(side_length=4, color=GRAY, fill_opacity=0.5)
+            euler_img.add(Text("Cargar euler.jpg", font_size=24))
+            euler_img.to_edge(UP, buff=1)
 
-        subtitle = Text("Una demostración visual usando Series de Taylor", font_size=30, color=GRAY).next_to(euler_img, DOWN)
+        # Lado Derecho: Título y Fórmula
+        title_right = Text("La fórmula de Euler", font_size=48, color=COLOR_TITLE)
+        formula_right = MathTex(
+            "e^{ix} = \\cos x + i \\sin x",
+            font_size=48
+        )
+        # Aplicamos colores a la fórmula para mantener consistencia
+        formula_right.set_color_by_tex("e", COLOR_E)
+        formula_right.set_color_by_tex("i", COLOR_I)
+        formula_right.set_color_by_tex("\\cos", COLOR_COS)
+        formula_right.set_color_by_tex("\\sin", COLOR_SIN)
         
-        self.play(Write(title), FadeIn(euler_img), FadeIn(subtitle))
-        self.wait(2)
-        self.play(FadeOut(subtitle), FadeOut(euler_img))
+        right_content = VGroup(title_right, formula_right).arrange(DOWN, buff=0.8)
+        right_content.next_to(euler_img, DOWN, buff=1)
+
+        # Animación inicial
+        self.play(
+            FadeIn(euler_img, shift=RIGHT),
+            Write(right_content)
+        )
+        self.wait(3)
+        
+        # Limpiar pantalla para la demostración
+        self.play(FadeOut(euler_img), FadeOut(right_content))
         self.wait(1)
 
         # Definición de Taylor de e^x
@@ -43,14 +66,18 @@ class EulerIdentityProof(Scene):
         
         # Mover arriba para hacer espacio
         self.play(
-            ex_def.animate.to_edge(UP).scale(0.8),
-            FadeOut(title) # Desaparece el título mientras sube la fórmula para evitar traslape
+            ex_def.animate.to_edge(UP).scale(0.8)
         )
 
         # --- 2. DEFINICIÓN DE e^{ix} ---
         # Explicación texto
-        def_text = Text("Definimos e elevado a un imaginario:", font_size=32).next_to(ex_def, DOWN, buff=1)
-        self.play(Write(def_text))
+        def_text = Text(
+            "Extendiendo analíticamente el valor de x\nal número imaginario ix", 
+            font_size=32,
+            t2c={"analíticamente": YELLOW, "imaginario ix": COLOR_I}
+        ).next_to(ex_def, DOWN, buff=1)
+        
+        self.play(SpiralIn(def_text))
         self.wait(1)
         
         # Sustitución x -> ix
@@ -64,7 +91,10 @@ class EulerIdentityProof(Scene):
         eix_eq.scale(0.9)
         eix_eq.next_to(def_text, DOWN)
         
-        self.play(TransformMatchingTex(ex_def.copy(), eix_eq), FadeOut(def_text)) # Transformación visual
+        self.play(
+            TransformMatchingTex(ex_def.copy(), eix_eq, path_arc=PI/2), 
+            FadeOut(def_text, shift=DOWN)
+        )
         self.wait(2)
 
         # --- 3. POTENCIAS DE i ---
@@ -115,9 +145,26 @@ class EulerIdentityProof(Scene):
         sin_eq.set_color_by_tex("x", COLOR_X)
         
         # Posicionamiento a la izquierda abajo
-        ref_group = VGroup(cox_eq, sin_eq).arrange(DOWN, aligned_edge=LEFT, buff=0.5).to_corner(DL, buff=0.5).scale(0.9)
+        ref_group = VGroup(cox_eq, sin_eq).arrange(DOWN, aligned_edge=LEFT, buff=0.5)
         
-        self.play(Write(ref_group))
+        # Título para las series
+        taylor_title = Text(
+            "desarrollo de series de taylor para sinx y cosx", 
+            font_size=20, 
+            color=GRAY_A,
+            slant=ITALIC
+        ).next_to(ref_group, DOWN, buff=0.3)
+        
+        full_ref = VGroup(ref_group, taylor_title).to_corner(DL, buff=0.5).scale(0.9)
+        
+        self.play(
+            LaggedStart(
+                Write(ref_group),
+                FadeIn(taylor_title, shift=UP),
+                lag_ratio=0.5
+            )
+        )
+        self.play(Indicate(ref_group, color=TEAL))
         self.wait(2)
         
         # --- 5. REAGRUPACIÓN ---
@@ -179,15 +226,156 @@ class EulerIdentityProof(Scene):
         self.play(
             FadeOut(brace_real), FadeOut(text_real),
             FadeOut(brace_imag), FadeOut(text_imag),
-            FadeOut(ref_group), # Ocultar definiciones de referencia
-            Transform(eix_eq, final_formula)
+            FadeOut(full_ref), # Ocultar definiciones de referencia
+            ReplacementTransform(eix_eq, final_formula)
         )
         
-        # Caja final
-        box = SurroundingRectangle(eix_eq, color=WHITE, buff=0.2)
+        # Caja final aplicada directamente al nuevo objeto
+        box = SurroundingRectangle(final_formula, color=WHITE, buff=0.2)
         self.play(Create(box))
         
         # Toque final bonito: Brillito o indicación
-        self.play(Indicate(eix_eq, scale_factor=1.2, color=YELLOW))
+        self.play(Indicate(final_formula, scale_factor=1.2, color=YELLOW))
+        self.wait(2)
+
+        # --- 7. INTERPRETACIÓN GEOMÉTRICA (CIRCUNFERENCIA TRIGONOMÉTRICA) ---
+        # Definimos el grupo con los objetos actuales en escena
+        final_group = VGroup(final_formula, box)
         
-        self.wait(3)
+        self.play(
+            final_group.animate.to_edge(UP, buff=0.3).scale(0.6),
+            run_time=2
+        )
+        self.wait(0.5)
+
+        # Crear Plano y Circunferencia ajustados a vertical
+        plane = ComplexPlane(
+            x_range=[-1.2, 1.2, 0.5],
+            y_range=[-1.2, 1.2, 0.5],
+            x_length=8,
+            y_length=8,
+            background_line_style={
+                "stroke_color": BLUE_D,
+                "stroke_width": 2,
+                "stroke_opacity": 0.2
+            }
+        ).shift(DOWN * 2)
+        
+        RADIUS = plane.c2p(1, 0)[0] - plane.c2p(0, 0)[0]
+        circle = Circle(radius=RADIUS, color=WHITE, stroke_width=3).move_to(plane.get_origin())
+        
+        # Etiquetas de ejes profesionales
+        real_label = MathTex("\\text{Re}", font_size=32).next_to(plane.get_x_axis(), RIGHT)
+        imag_label = MathTex("\\text{Im}", font_size=32).next_to(plane.get_y_axis().get_top(), DOWN + RIGHT, buff=0.4)
+
+        self.play(
+            Create(plane),
+            Create(circle),
+            Write(real_label),
+            Write(imag_label),
+            run_time=2
+        )
+
+        # Variables dinámicas (ValueTracker para el ángulo)
+        theta_tracker = ValueTracker(0)
+
+        # Vector radio (e^{ix})
+        vector = always_redraw(lambda: 
+            Arrow(
+                start=plane.get_origin(),
+                end=plane.c2p(
+                    np.cos(theta_tracker.get_value()), 
+                    np.sin(theta_tracker.get_value())
+                ),
+                buff=0,
+                color=COLOR_E,
+                stroke_width=6
+            )
+        )
+
+        # Componente Coseno (Horizontal)
+        cos_line = always_redraw(lambda:
+            Line(
+                start=plane.get_origin(),
+                end=plane.c2p(np.cos(theta_tracker.get_value()), 0),
+                color=COLOR_COS,
+                stroke_width=7
+            )
+        )
+
+        # Componente Seno (Vertical)
+        sin_line = always_redraw(lambda:
+            Line(
+                start=plane.c2p(np.cos(theta_tracker.get_value()), 0),
+                end=plane.c2p(np.cos(theta_tracker.get_value()), np.sin(theta_tracker.get_value())),
+                color=COLOR_SIN,
+                stroke_width=7
+            )
+        )
+
+        # Etiquetas dinámicas
+        cos_label = always_redraw(lambda:
+            MathTex("\\cos(x)", color=COLOR_COS, font_size=36)
+            .next_to(cos_line, DOWN, buff=0.1)
+            .add_background_rectangle()
+        )
+        
+        sin_label = always_redraw(lambda:
+            MathTex("\\sin(x)", color=COLOR_SIN, font_size=36)
+            .next_to(sin_line, RIGHT, buff=0.1)
+            .add_background_rectangle()
+        )
+
+        # Punto en el extremo
+        dot = always_redraw(lambda:
+            Dot(point=vector.get_end(), color=COLOR_E, radius=0.08)
+        )
+
+        # ARCO DEL ÁNGULO CORREGIDO: Centrado en el origen del plano
+        angle_arc = always_redraw(lambda:
+            Arc(
+                radius=0.6, 
+                start_angle=0, 
+                angle=theta_tracker.get_value(),
+                color=YELLOW,
+                stroke_width=4,
+                arc_center=plane.get_origin()
+            )
+        )
+        
+        angle_text = always_redraw(lambda:
+            MathTex(f"x = {theta_tracker.get_value():.2f} \\text{{ rad}}", font_size=36)
+            .to_corner(UR, buff=0.5)
+            .add_background_rectangle()
+        )
+
+        # Etiqueta e^{ix} en la punta del vector
+        vector_label = always_redraw(lambda:
+            MathTex("e^{ix}", color=COLOR_E, font_size=32)
+            .next_to(dot, UR, buff=0.1)
+            .add_background_rectangle()
+        )
+
+        # Animación de elementos dinámicos
+        self.play(
+            GrowArrow(vector),
+            Create(cos_line),
+            Create(sin_line),
+            FadeIn(cos_label),
+            FadeIn(sin_label),
+            FadeIn(dot),
+            FadeIn(vector_label),
+            Create(angle_arc),
+            Write(angle_text)
+        )
+        self.wait(1)
+
+        # ROTACIÓN DE 360 GRADOS
+        self.play(
+            theta_tracker.animate.set_value(2 * PI),
+            run_time=10,
+            rate_func=linear
+        )
+        
+        # Terminar el video inmediatamente después de la rotación
+        self.wait(2)
